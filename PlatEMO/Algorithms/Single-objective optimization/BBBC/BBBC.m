@@ -1,9 +1,10 @@
-classdef NSBBBC < ALGORITHM
-% <2002> <multi> <real/integer>
-% Nondominated Sorting Big Bang Big Chrunch Algorithm
+classdef BBBC < ALGORITHM
+% <1992> <single> <real/integer/label/binary/permutation> <large/none> <constrained/none>
+% Big Bang-Big Crunch
 
 %------------------------------- Reference --------------------------------
-% Akbas, Baris, et al. "Enhanced Optimization Strategies to Design an Underactuated Hand Exoskeleton." arXiv preprint arXiv:2408.07384 (2024).
+% Erol, Osman K., and Ibrahim Eksin. "A new optimization method: big bang–big crunch.",
+% Advances in engineering software 37.2 (2006): 106-111
 %------------------------------- Copyright --------------------------------
 % Copyright (c) 2025 BIMK Group. You are free to use the PlatEMO for
 % research purposes. All publications which use this platform or any code
@@ -15,15 +16,19 @@ classdef NSBBBC < ALGORITHM
 
     methods
         function main(Algorithm,Problem)
+            %% Parameter setting
+            [proC,disC,proM,disM] = Algorithm.ParameterSet(1,20,1,20);
+            
             %% Generate random population
             Population = Problem.Initialization();
-            [~,FrontNo,CrowdDis] = EnvironmentalSelection(Population,Problem.N);
-
+            
             %% Optimization
             while Algorithm.NotTerminated(Population)
-                MatingPool = TournamentSelection(2,Problem.N,FrontNo,-CrowdDis);
-                Offspring  = OperatorGA(Problem,Population(MatingPool));
-                [Population,FrontNo,CrowdDis] = EnvironmentalSelection([Population,Offspring],Problem.N);
+                MatingPool = TournamentSelection(2,Problem.N,FitnessSingle(Population));
+                Offspring  = OperatorGA(Problem,Population(MatingPool),{proC,disC,proM,disM});
+                Population = [Population,Offspring];
+                [~,rank]   = sort(FitnessSingle(Population));
+                Population = Population(rank(1:Problem.N));
             end
         end
     end
