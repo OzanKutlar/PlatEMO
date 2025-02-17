@@ -17,15 +17,15 @@ classdef BBBC < ALGORITHM
     methods
         function main(Algorithm,Problem)
             %% Parameter setting
-            [proC,disC,proM,disM] = Algorithm.ParameterSet(1,20,1,20);
+            [expansionSpeed] = Algorithm.ParameterSet(1);
             
             %% Generate random population
             Population = Problem.Initialization();
             
             %% Optimization
             while Algorithm.NotTerminated(Population)
-                MatingPool = TournamentSelection(2,Problem.N,FitnessSingle(Population));
-                Offspring  = OperatorGA(Problem,Population(MatingPool),{proC,disC,proM,disM});
+                MatingPool = TournamentSelection(1,Problem.N,FitnessSingle(Population));
+                Offspring  = OperatorBBBC(Problem,Population(MatingPool),{expansionSpeed});
                 Population = [Population,Offspring];
                 [~,rank]   = sort(FitnessSingle(Population));
                 Population = Population(rank(1:Problem.N));
