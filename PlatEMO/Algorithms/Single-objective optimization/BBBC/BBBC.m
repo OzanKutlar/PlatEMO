@@ -24,11 +24,8 @@ classdef BBBC < ALGORITHM
             
             %% Optimization
             while Algorithm.NotTerminated(Population)
-                MatingPool = TournamentSelection(1,Problem.N,FitnessSingle(Population));
-                Offspring  = OperatorBBBC(Problem,Population(MatingPool),{expansionSpeed});
-                Population = [Population,Offspring];
-                [~,rank]   = sort(FitnessSingle(Population));
-                Population = Population(rank(1:Problem.N));
+                Best = TournamentSelection(2,5,FitnessSingle(Population));
+                Population  = OperatorBBBC(Problem,Population(Best(1)),{expansionSpeed});
             end
         end
     end

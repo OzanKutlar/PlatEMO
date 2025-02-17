@@ -1,13 +1,4 @@
-function Offspring = OperatorBBBC(Problem,Parent,Parameter)
-%OperatorBBBC - Big Bang and Big Crunch operator
-%
-%
-%   Off = OperatorBBBC(Pro,P,{exp}) specifies the parameters
-%   of operators, where exp is the speed at which the algorithm converges.
-%
-%   Example:
-%       Offspring = OperatorBBBC(Problem,Parent)
-%       Offspring = OperatorBBBC(Problem,Parent.decs,{1,20,1,20})
+function Offspring = OperatorBBBC(Problem,Best,Parameter)
 
 %------------------------------- Reference --------------------------------
 
@@ -25,40 +16,39 @@ function Offspring = OperatorBBBC(Problem,Parent,Parameter)
     else
         [exp] = deal(1);
     end
-    if isa(Parent(1),'SOLUTION')
+    if isa(Best(1),'SOLUTION')
         evaluated = true;
-        Parent    = Parent.decs;
+        Best    = Best.decs;
     else
         evaluated = false;
     end
     
-
+    Offspring = bigBang_norm(Problem, Best, Problem.N, exp);
 
     if evaluated
         Offspring = Problem.Evaluation(Offspring);
     end
 end
-% Genetic operators for permutation variables
 
-    %% Order crossover
-    [N,D]     = size(Parent1);
-    Offspring = [Parent1;Parent2];
-    k = randi(D,1,2*N);
-    for i = 1 : N
-        if rand < proC
-            Offspring(i,k(i)+1:end)   = setdiff(Parent2(i,:),Parent1(i,1:k(i)),'stable');
-            Offspring(i+N,k(i)+1:end) = setdiff(Parent1(i,:),Parent2(i,1:k(i)),'stable');
-        end
-    end
+
+function [pop] = bigBang_norm(Problem, centerOfMass, n, g)
+    mu = 0;
+    sigma = 1;
+    % generate normally distributed random numbers
+    randomNumbers = normrnd(mu, sigma, [n, width(centerOfMass)]);
     
-    %% Slight mutation
-    k = randi(D,1,2*N);
-    s = randi(D,1,2*N);
-    for i = 1 : 2*N
-        if s(i) < k(i)
-            Offspring(i,:) = Offspring(i,[1:s(i)-1,k(i),s(i):k(i)-1,k(i)+1:end]);
-        elseif s(i) > k(i)
-            Offspring(i,:) = Offspring(i,[1:k(i)-1,k(i)+1:s(i)-1,k(i),s(i):end]);
-        end
-    end
+    % normalize the numbers to the range [-1, 1]
+    minVal = min(randomNumbers); % find the minimum value
+    maxVal = max(randomNumbers); % find the maximum value
+    
+    % normalize to [0, 1]
+    normalizedNumbers = (randomNumbers - minVal) ./ (maxVal - minVal);
+    
+    % scale and shift to [-1, 1]
+    scaledNumbers = 2 * normalizedNumbers - 1;
+
+    pop = centerOfMass + ((Problem.upper-Problem.lower).*scaledNumbers)/g;
+    pop = max(min(pop, Problem.upper), Problem.lower);
 end
+
+
