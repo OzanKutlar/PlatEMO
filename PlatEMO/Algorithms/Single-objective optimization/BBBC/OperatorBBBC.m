@@ -12,9 +12,9 @@ function Offspring = OperatorBBBC(Problem,Best,Parameter)
 %--------------------------------------------------------------------------
 
     if nargin > 2
-        [exp] = deal(Parameter{:});
+        [exp, Generation] = deal(Parameter{:});
     else
-        [exp] = deal(1);
+        [exp, Generation] = deal(1, 1);
     end
     if isa(Best(1),'SOLUTION')
         evaluated = true;
@@ -23,7 +23,7 @@ function Offspring = OperatorBBBC(Problem,Best,Parameter)
         evaluated = false;
     end
     
-    Offspring = bigBang_norm(Problem, Best, Problem.N, exp);
+    Offspring = bigBang_norm(Problem, Best, Problem.N, exp * Generation);
 
     if evaluated
         Offspring = Problem.Evaluation(Offspring);

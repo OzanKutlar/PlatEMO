@@ -21,11 +21,12 @@ classdef BBBC < ALGORITHM
             
             %% Generate random population
             Population = Problem.Initialization();
-            
+            Generation = 0;
             %% Optimization
             while Algorithm.NotTerminated(Population)
-                Best = TournamentSelection(2,5,FitnessSingle(Population));
-                Population  = OperatorBBBC(Problem,Population(Best(1)),{expansionSpeed});
+                Generation = Generation + 1;
+                Best = TournamentSelection(2,1,FitnessSingle(Population));
+                Population  = OperatorBBBC(Problem,Population(Best),{expansionSpeed, Generation});
             end
         end
     end

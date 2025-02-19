@@ -25,7 +25,6 @@ classdef GA < ALGORITHM
             
             %% Generate random population
             Population = Problem.Initialization();
-            
             %% Optimization
             while Algorithm.NotTerminated(Population)
                 MatingPool = TournamentSelection(2,Problem.N,FitnessSingle(Population));
