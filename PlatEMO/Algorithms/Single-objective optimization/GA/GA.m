@@ -25,13 +25,19 @@ classdef GA < ALGORITHM
             
             %% Generate random population
             Population = Problem.Initialization();
+            Generation = 0;
             %% Optimization
             while Algorithm.NotTerminated(Population)
+                Generation = Generation + 1;
                 MatingPool = TournamentSelection(2,Problem.N,FitnessSingle(Population));
                 Offspring  = OperatorGA(Problem,Population(MatingPool),{proC,disC,proM,disM});
                 Population = [Population,Offspring];
                 [~,rank]   = sort(FitnessSingle(Population));
                 Population = Population(rank(1:Problem.N));
+
+                if mod(Generation, 10) == 0 || Generation < 5
+                    DisplayTopFitnesses(Population, Generation);
+                end
             end
         end
     end

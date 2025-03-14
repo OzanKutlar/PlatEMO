@@ -15,18 +15,22 @@ classdef BBBC < ALGORITHM
 %--------------------------------------------------------------------------
 
     methods
-        function main(Algorithm,Problem)
+        function main(Algorithm, Problem)
             %% Parameter setting
-            [expansionSpeed] = Algorithm.ParameterSet(1);
+            [expansionSpeed] = Algorithm.ParameterSet(100);
             
-            %% Generate random population
+            %% Generate initial population
             Population = Problem.Initialization();
             Generation = 0;
-            %% Optimization
+            
+            %% Optimization loop
             while Algorithm.NotTerminated(Population)
                 Generation = Generation + 1;
-                Best = TournamentSelection(2,1,FitnessSingle(Population));
-                Population  = OperatorBBBC(Problem,Population(Best),{expansionSpeed, Generation});
+                % Pass the entire population so the center of mass can be computed
+                Population = OperatorBBBC(Problem, Population, {1, Generation});
+                if mod(Generation, 10) == 0 || Generation < 5
+                    DisplayTopFitnesses(Population, Generation);
+                end
             end
         end
     end
