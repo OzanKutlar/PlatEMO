@@ -34,10 +34,7 @@ classdef GA < ALGORITHM
                 Population = [Population,Offspring];
                 [~,rank]   = sort(FitnessSingle(Population));
                 Population = Population(rank(1:Problem.N));
-
-                if mod(Generation, 10) == 0 || Generation < 5
-                    DisplayTopFitnesses(Population, Generation);
-                end
+                % DisplayTopFitnesses(Population, Generation);
             end
         end
     end

@@ -1,6 +1,7 @@
 classdef BBBC < ALGORITHM
 % <1992> <single> <real/integer/label/binary/permutation> <large/none> <constrained/none>
 % Big Bang-Big Crunch
+% expS ---  1 --- Expansion Speed
 
 %------------------------------- Reference --------------------------------
 % Erol, Osman K., and Ibrahim Eksin. "A new optimization method: big bang–big crunch.",
@@ -15,22 +16,18 @@ classdef BBBC < ALGORITHM
 %--------------------------------------------------------------------------
 
     methods
-        function main(Algorithm, Problem)
+        function main(Algorithm,Problem)
             %% Parameter setting
-            [expansionSpeed] = Algorithm.ParameterSet(100);
+            [expS] = Algorithm.ParameterSet(1);
             
-            %% Generate initial population
+            %% Generate random population
             Population = Problem.Initialization();
             Generation = 0;
-            
-            %% Optimization loop
+            %% Optimization
             while Algorithm.NotTerminated(Population)
                 Generation = Generation + 1;
-                % Pass the entire population so the center of mass can be computed
-                Population = OperatorBBBC(Problem, Population, {1, Generation});
-                if mod(Generation, 10) == 0 || Generation < 5
-                    DisplayTopFitnesses(Population, Generation);
-                end
+                [~,Best]       = min(FitnessSingle(Population));
+                Population  = OperatorBBBC(Problem,Population(Best),{expS, Generation});
             end
         end
     end
