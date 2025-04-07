@@ -19,32 +19,67 @@ classdef MSGA < ALGORITHM
 %--------------------------------------------------------------------------
 
     methods
-        function main(Algorithm,Problem, pair) %pair will be like two different values 1-4/6, like [1, 3]. function nums
+        function main(Algorithm, Problem)
             %% Parameter setting
-            [proC,disC,proM,disM] = Algorithm.ParameterSet(1,20,1,20);
+            [proC, disC, proM, disM] = Algorithm.ParameterSet(1, 20, 1, 20);
             selectionMap = containers.Map(...
-                {1, 2, 3, 4}, ...
-                {@TournamentSelection, @RouletteWheelSelection, @StochasticUniversalSampling, @RankSelection});
+                {1, 2, 3, 4, 5}, ...
+                {@TournamentSelection, @RouletteWheelSelection, @StochasticUniversalSampling, @RankSelection, @TruncationSelection});
+            
             %% Generate random population
             Population = Problem.Initialization();
             Generation = 0;
+            
             %% Optimization
             while Algorithm.NotTerminated(Population)
                 Generation = Generation + 1;
                 fitness = FitnessSingle(Population);
-                halfN = floor(Problem.N / 2);
-                selFunc1 = selectionMap(pair(1));
-                selFunc2 = selectionMap(pair(2));
-                MatingPool_T = selFunc1(2, halfN, fitness);
-                MatingPool_R = selFunc2(Problem.N - halfN, fitness);
-                MatingPool = zeros(1, Problem.N);
-                MatingPool(1:2:end) = MatingPool_T;
-                MatingPool(2:2:end) = MatingPool_R;
-                Offspring  = OperatorGA(Problem,Population(MatingPool),{proC,disC,proM,disM});
-                Population = [Population,Offspring];
-                [~,rank]   = sort(FitnessSingle(Population));
-                Population = Population(rank(1:Problem.N));
-                % DisplayTopFitnesses(Population, Generation);
+                
+                %divide population into four quarters
+                N = Problem.N;
+                quarterSize = floor(N / 4);
+                quarterSizes = [quarterSize, quarterSize, quarterSize, N - 3*quarterSize];%remainder
+                startIdx = cumsum([1, quarterSizes(1:end-1)]);
+                algoIndices = randi(5, 1, 4);
+                
+                %subpopulation array for all selection algorithms
+                subPopulations = cell(1, 5);
+                subIndices = cell(1, 5);
+                
+                %assigning quarters to their randomly selected algorithms
+                for i = 1:4
+                    algo = algoIndices(i);
+                    quarterIndices = startIdx(i):(startIdx(i) + quarterSizes(i) - 1);
+                    if isempty(subPopulations{algo})
+                        subPopulations{algo} = Population(quarterIndices);
+                        subIndices{algo} = quarterIndices;
+                    else
+                        subPopulations{algo} = [subPopulations{algo}, Population(quarterIndices)];
+                        subIndices{algo} = [subIndices{algo}, quarterIndices];
+                    end
+                end
+                
+                %theoretically correct, I do not think I am missing a step.
+                MatingPool = zeros(1, N);
+                currIdx = 1;
+                for algo = 1:5
+                    if ~isempty(subPopulations{algo})
+                        subFitness = fitness(subIndices{algo});
+                        numToSelect = length(subIndices{algo});
+                        selFunc = selectionMap(algo);
+                        selectedIndices = selFunc(numToSelect, subFitness);
+                        globalSelectedIndices = subIndices{algo}(selectedIndices);
+                        MatingPool(currIdx:(currIdx + numToSelect - 1)) = globalSelectedIndices;
+                        currIdx = currIdx + numToSelect;
+                    end
+                end
+                
+                %create offspring using GA operators, merge the parent
+                %population and offspring, sort and eliminate
+                Offspring = OperatorGA(Problem, Population(MatingPool), {proC, disC, proM, disM});
+                Population = [Population, Offspring];
+                [~, rank] = sort(FitnessSingle(Population));
+                Population = Population(rank(1:N));
             end
         end
 
@@ -57,7 +92,7 @@ classdef MSGA < ALGORITHM
             
             Fitness = reshape(Fitness, 1, []);
             
-            Fitness = Fitness - min(min(Fitness), 0) + 1e-6;
+            Fitness = Fitness - min(min(Fitness), 0);
             Prob = 1 ./ Fitness;
             Prob = Prob / sum(Prob);
             CDF = cumsum(Prob);
@@ -98,6 +133,27 @@ classdef MSGA < ALGORITHM
             %we select N individuals based on rank probabilities
             randNums = rand(1, N);
             index = arrayfun(@(r) find(r <= CDF, 1, 'first'), randNums);
+        end
+
+        function index = TruncationSelection(N, Fitness)
+            %TruncationSelection - Truncation selection.
+            %
+            %   index = TruncationSelection(N, Fitness) returns the indices of N
+            %   individuals selected by truncation selection. Individuals with the best
+            %   (smallest) fitness are selected deterministically or randomly if N is
+            %   less than the number of top individuals.
+        
+            Fitness = reshape(Fitness, [], 1);
+            %best first
+            [~, sortedIdx] = sort(Fitness);
+            
+            %truncation% (e.g., top 60% of individuals can be selected from)
+            truncationRate = 0.6;
+            numTruncated = max(1, round(length(Fitness) * truncationRate));
+            topIndices = sortedIdx(1:numTruncated);
+            
+            %randomly select N individuals from the top pop
+            index = topIndices(randi(numTruncated, 1, N));
         end
     end
 end
