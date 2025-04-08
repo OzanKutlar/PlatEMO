@@ -22,6 +22,8 @@ classdef MSGA < ALGORITHM
         function main(Algorithm, Problem)
             %% Parameter setting
             [proC, disC, proM, disM] = Algorithm.ParameterSet(1, 20, 1, 20);
+
+            %% {@TournamentSelection, @RouletteWheelSelection, @StochasticUniversalSampling, @RankSelection, @TruncationSelection});
             selectionMap = containers.Map(...
                 {1, 2, 3, 4, 5}, ...
                 {@TournamentSelection, @RouletteWheelSelection, @StochasticUniversalSampling, @RankSelection, @TruncationSelection});
@@ -67,7 +69,11 @@ classdef MSGA < ALGORITHM
                         subFitness = fitness(subIndices{algo});
                         numToSelect = length(subIndices{algo});
                         selFunc = selectionMap(algo);
-                        selectedIndices = selFunc(numToSelect, subFitness);
+                        if(algo == 1)
+                            selectedIndices = selFunc(2, numToSelect, subFitness);
+                        else
+                            selectedIndices = selFunc(numToSelect, subFitness);
+                        end
                         globalSelectedIndices = subIndices{algo}(selectedIndices);
                         MatingPool(currIdx:(currIdx + numToSelect - 1)) = globalSelectedIndices;
                         currIdx = currIdx + numToSelect;
@@ -83,77 +89,10 @@ classdef MSGA < ALGORITHM
             end
         end
 
-        function index = StochasticUniversalSampling(N, Fitness)
-            %StochasticUniversalSampling - Stochastic Universal Sampling selection.
-            %
-            %   index = StochasticUniversalSampling(N, Fitness) returns the indices of
-            %   N solutions by Stochastic Universal Sampling (SUS) based on fitness.
-            %   Smaller fitness values indicate a higher possibility of selection.
-            
-            Fitness = reshape(Fitness, 1, []);
-            
-            Fitness = Fitness - min(min(Fitness), 0);
-            Prob = 1 ./ Fitness;
-            Prob = Prob / sum(Prob);
-            CDF = cumsum(Prob);
-            
-            startPoint = rand / N;
-            pointers = startPoint + (0:N-1) / N;
-            
-            index = zeros(1, N);
-            i = 1;
-            for j = 1:N
-                while pointers(j) > CDF(i)
-                    i = i + 1;
-                end
-                index(j) = i;
-            end
-        end
-
-        function index = RankSelection(N, Fitness)
-            %RankSelection - Rank-based selection.
-            %
-            %   index = RankSelection(N, Fitness) returns the indices of N solutions
-            %   selected by rank-based selection. A smaller fitness value indicates a
-            %   better rank and higher possibility of being selected.
-            
-            Fitness = reshape(Fitness, [], 1);
-            
-            %assigning ranks: best = 1, worst = length(Fitness)
-            [~, sortedIdx] = sort(Fitness);
-            ranks = zeros(size(Fitness));
-            ranks(sortedIdx) = 1:length(Fitness);
-            
-            %we convert ranks to selection probabilities (inverting rank, lower the more)
-            %we do linear ranking here, there is also exponential ranking methods (Deb K., Multi-Objective Optimization using Evolutionary Algorithms)
-            selectionProb = (length(Fitness) - ranks + 1);
-            selectionProb = selectionProb / sum(selectionProb);
-            CDF = cumsum(selectionProb);
-            
-            %we select N individuals based on rank probabilities
-            randNums = rand(1, N);
-            index = arrayfun(@(r) find(r <= CDF, 1, 'first'), randNums);
-        end
-
-        function index = TruncationSelection(N, Fitness)
-            %TruncationSelection - Truncation selection.
-            %
-            %   index = TruncationSelection(N, Fitness) returns the indices of N
-            %   individuals selected by truncation selection. Individuals with the best
-            %   (smallest) fitness are selected deterministically or randomly if N is
-            %   less than the number of top individuals.
         
-            Fitness = reshape(Fitness, [], 1);
-            %best first
-            [~, sortedIdx] = sort(Fitness);
-            
-            %truncation% (e.g., top 60% of individuals can be selected from)
-            truncationRate = 0.6;
-            numTruncated = max(1, round(length(Fitness) * truncationRate));
-            topIndices = sortedIdx(1:numTruncated);
-            
-            %randomly select N individuals from the top pop
-            index = topIndices(randi(numTruncated, 1, N));
-        end
+
+        
+
+        
     end
 end
