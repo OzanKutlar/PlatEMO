@@ -21,12 +21,12 @@ classdef MSGA < ALGORITHM
     methods
         function main(Algorithm, Problem)
             %% Parameter setting
-            [proC, disC, proM, disM] = Algorithm.ParameterSet(1, 20, 1, 20);
+            [proC, disC, proM, disM, algoIndices] = Algorithm.ParameterSet(1, 20, 1, 20, randi(4, 1, 4));
 
             %% {@TournamentSelection, @RouletteWheelSelection, @StochasticUniversalSampling, @RankSelection, @TruncationSelection});
             selectionMap = containers.Map(...
-                {1, 2, 3, 4, 5}, ...
-                {@TournamentSelection, @RouletteWheelSelection, @StochasticUniversalSampling, @RankSelection, @TruncationSelection});
+                {1, 2, 3, 4}, ...
+                {@TournamentSelection, @StochasticUniversalSampling, @RankSelection, @TruncationSelection});
             
             %% Generate random population
             Population = Problem.Initialization();
@@ -42,7 +42,6 @@ classdef MSGA < ALGORITHM
                 quarterSize = floor(N / 4);
                 quarterSizes = [quarterSize, quarterSize, quarterSize, N - 3*quarterSize];%remainder
                 startIdx = cumsum([1, quarterSizes(1:end-1)]);
-                algoIndices = randi(5, 1, 4);
                 
                 %subpopulation array for all selection algorithms
                 subPopulations = cell(1, 5);
@@ -64,7 +63,7 @@ classdef MSGA < ALGORITHM
                 %theoretically correct, I do not think I am missing a step.
                 MatingPool = zeros(1, N);
                 currIdx = 1;
-                for algo = 1:5
+                for algo = 1:4
                     if ~isempty(subPopulations{algo})
                         subFitness = fitness(subIndices{algo});
                         numToSelect = length(subIndices{algo});
