@@ -1,4 +1,4 @@
-classdef MSGA < ALGORITHM
+classdef MiSeGA < ALGORITHM
 % <1992> <single> <real/integer/label/binary/permutation> <large/none> <constrained/none>
 % Multiple Selection genetic algorithm
 % proC ---  1 --- Probability of crossover
