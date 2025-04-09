@@ -1,6 +1,6 @@
 function data = GetFromServer(ip, port, maxDelay)
     url = sprintf('http://%s:%s', ip, port);
-
+    global finalData
 
     computerName = getenv('COMPUTERNAME');
     % numbers = regexp(computerName, '\d+', 'match');
@@ -19,8 +19,8 @@ function data = GetFromServer(ip, port, maxDelay)
     fprintf('Delaying for %d seconds\n', delay);
     pause(delay);
     
-	
 	for i = 1:100
+        finalData = {};
 		data = webread(url, options);
 		if isfield(data, 'message')
 			fprintf('Stopping with message : %s\nI ran %d experiments.\n', data.message, i);
@@ -32,15 +32,22 @@ function data = GetFromServer(ip, port, maxDelay)
 		delay = round(minDelay + (maxDelay - minDelay) * rand());
         fprintf("Finished Experiment. Delaying for %d seconds before asking for another.\n", delay);
         allSolutions = cell(1, data.repeat);  % Preallocate a cell array
-        for i = 1:data.repeat
-            allSolutions{i} = platemo('algorithm', @MSGA, ...
+        allFitness = cell(1, data.repeat);  % Preallocate a cell array
+
+        for ii = 1:data.repeat
+            temp = platemo('algorithm', @MSGA, ...
                 'problem', funcHandles{data.func}, ...
                 'N', 100, ...
                 'maxFE', 10000, ...
                 'proM', 0.4, ...
                 'algoIndices', [data.algo1, data.algo2, data.algo3, data.algo4]);  % Use single quotes for string keys
+            allSolutions{ii} = finalData;
+            allFitness{ii} = FitnessSingle(finalData.Pop);
         end
+        data.algoStack = [data.algo1, data.algo2, data.algo3, data.algo4];
+        data = rmfield(data, {'algo1', 'algo2', 'algo3', 'algo4'});
         data.finalPop = allSolutions;
+        data.finalFitness = allFitness;
 
         nameOfFile = strcat("exp-testing", string(data.id));
 		nameOfFile = strcat('experiments/', nameOfFile, '.mat');
@@ -56,7 +63,7 @@ function data = GetFromServer(ip, port, maxDelay)
 		pause(delay);
     end
     
-    fprintf('The for loop ended. This shouldnt happen?\nI ran %d experiments.\n', i);
+    fprintf('The for loop ended. This shouldnt happen?\nI ran %d experiments.\n', ii);
     % !taskkill /F /im "matlab.exe"
     return
     

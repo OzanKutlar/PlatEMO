@@ -31,6 +31,7 @@ classdef MSGA < ALGORITHM
             %% Generate random population
             Population = Problem.Initialization();
             Generation = 0;
+            global finalData
             
             %% Optimization
             while Algorithm.NotTerminated(Population)
@@ -85,6 +86,7 @@ classdef MSGA < ALGORITHM
                 Population = [Population, Offspring];
                 [~, rank] = sort(FitnessSingle(Population));
                 Population = Population(rank(1:N));
+                finalData.Pop = Population;
             end
         end
 
