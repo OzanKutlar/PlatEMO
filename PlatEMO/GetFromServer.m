@@ -2,6 +2,13 @@ function data = GetFromServer(ip, port, maxDelay)
     url = sprintf('http://%s:%s', ip, port);
     global finalData
 
+    if ~isfolder('experiments')
+        mkdir('experiments');
+    end
+
+    addpath(genpath(pwd));
+    
+
     computerName = getenv('COMPUTERNAME');
     % numbers = regexp(computerName, '\d+', 'match');
 	options = weboptions('HeaderFields', {'ComputerName', computerName}); % Add the computerName as a header
@@ -27,7 +34,9 @@ function data = GetFromServer(ip, port, maxDelay)
             %!start selfDestruct.bat
             
 			return
-		end
+        end
+        funcHandle = eval(strcat("@CEC", data.year, "_F", num2str(data.func)));
+        funcInfo = eval(strcat("CEC", data.year, "_F", num2str(data.func)));
 		display(data);
 		delay = round(minDelay + (maxDelay - minDelay) * rand());
         fprintf("Finished Experiment. Delaying for %d seconds before asking for another.\n", delay);
@@ -36,21 +45,25 @@ function data = GetFromServer(ip, port, maxDelay)
 
         for ii = 1:data.repeat
             temp = platemo('algorithm', @MiSeGA, ...
-                'problem', funcHandles{data.func}, ...
+                'problem', funcHandle, ...
                 'N', 100, ...
                 'maxFE', 10000, ...
+                'D', data.D, ...
                 'proM', 0.4, ...
-                'algoIndices', [data.algo1, data.algo2, data.algo3, data.algo4]);  % Use single quotes for string keys
+                'algoIndices', [data.algo1, data.algo2, data.algo3, data.algo4]);
             allSolutions{ii} = finalData;
             allFitness{ii} = FitnessSingle(finalData.Pop);
         end
-        data.algoStack = [data.algo1, data.algo2, data.algo3, data.algo4];
+        data.selectionMethods = [data.algo1, data.algo2, data.algo3, data.algo4];
         data = rmfield(data, {'algo1', 'algo2', 'algo3', 'algo4'});
         data.finalPop = allSolutions;
         data.finalFitness = allFitness;
+        data.funcInfo = funcInfo;
 
         nameOfFile = strcat("exp-testing", string(data.id));
 		nameOfFile = strcat('experiments/', nameOfFile, '.mat');
+
+
         save(nameOfFile, "data");
 
 		uploadFileToServerAsJSON(nameOfFile, url, computerName, data.id)
