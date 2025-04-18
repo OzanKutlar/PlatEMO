@@ -21,7 +21,9 @@ classdef MiSeGA < ALGORITHM
     methods
         function main(Algorithm, Problem)
             %% Parameter setting
-            [proC, disC, proM, disM, algoIndices] = Algorithm.ParameterSet(1, 20, 1, 20, randi(4, 1, 4));
+            [proC, disC, proM, disM, algoPercentages] = Algorithm.ParameterSet(1, 20, 1, 20, [0.25, 0.25, 0.25, 0.25]);
+
+            algoIndices = [1,2,3,4];
 
             %% {@TournamentSelection, @RouletteWheelSelection, @StochasticUniversalSampling, @RankSelection, @TruncationSelection});
             selectionMap = containers.Map(...
@@ -40,8 +42,7 @@ classdef MiSeGA < ALGORITHM
                 
                 %divide population into four quarters
                 N = Problem.N;
-                quarterSize = floor(N / 4);
-                quarterSizes = [quarterSize, quarterSize, quarterSize, N - 3*quarterSize];%remainder
+                quarterSizes = algoPercentages * N;
                 startIdx = cumsum([1, quarterSizes(1:end-1)]);
                 
                 %subpopulation array for all selection algorithms

@@ -15,11 +15,6 @@ function data = GetFromServer(ip, port, maxDelay)
 
     minDelay = 1;
 
-    funcHandles = {@CEC2020_F1, @CEC2020_F2, @CEC2020_F3, @CEC2020_F4, @CEC2020_F5, ...
-                   @CEC2020_F6, @CEC2020_F7, @CEC2020_F8, @CEC2020_F9, @CEC2020_F10};
-    
-
-
     
     
     delay = round(minDelay + (maxDelay - minDelay) * rand());
@@ -31,7 +26,7 @@ function data = GetFromServer(ip, port, maxDelay)
 		data = webread(url, options);
 		if isfield(data, 'message')
 			fprintf('Stopping with message : %s\nI ran %d experiments.\n', data.message, i);
-            %!start selfDestruct.bat
+            % !start selfDestruct.bat
             
 			return
         end
@@ -42,7 +37,9 @@ function data = GetFromServer(ip, port, maxDelay)
         fprintf("Finished Experiment. Delaying for %d seconds before asking for another.\n", delay);
         allSolutions = cell(1, data.repeat);  % Preallocate a cell array
         allFitness = cell(1, data.repeat);  % Preallocate a cell array
-
+        algoVector = [data.algo1, data.algo2, data.algo3, data.algo4];
+        algoVector = algoVector ./ norm(algoVector);
+		
         for ii = 1:data.repeat
             temp = platemo('algorithm', @MiSeGA, ...
                 'problem', funcHandle, ...
@@ -50,7 +47,7 @@ function data = GetFromServer(ip, port, maxDelay)
                 'maxFE', 10000, ...
                 'D', data.D, ...
                 'proM', 0.4, ...
-                'algoIndices', [data.algo1, data.algo2, data.algo3, data.algo4]);
+                'algoIndices', algoVector);
             allSolutions{ii} = finalData;
             allFitness{ii} = FitnessSingle(finalData.Pop);
         end
