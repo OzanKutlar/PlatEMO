@@ -34,7 +34,6 @@ classdef MiSeGA < ALGORITHM
             Population = Problem.Initialization();
             Generation = 0;
             global finalData
-            
             %% Optimization
             while Algorithm.NotTerminated(Population)
                 Generation = Generation + 1;
