@@ -21,7 +21,7 @@ function data = GetFromServer(ip, port, maxDelay)
     fprintf('Delaying for %d seconds\n', delay);
     pause(delay);
     
-	for i = 1:100
+	for i = 1:1000
         finalData = {};
 		data = webread(url, options);
 		if isfield(data, 'message')
@@ -37,7 +37,7 @@ function data = GetFromServer(ip, port, maxDelay)
         fprintf("Finished Experiment. Delaying for %d seconds before asking for another.\n", delay);
         allSolutions = cell(1, data.repeat);  % Preallocate a cell array
         allFitness = cell(1, data.repeat);  % Preallocate a cell array
-        algoVector = [data.algo1, data.algo2, data.algo3, data.algo4];
+        algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
         algoVector = algoVector ./ norm(algoVector);
 		
         for ii = 1:data.repeat
@@ -47,12 +47,12 @@ function data = GetFromServer(ip, port, maxDelay)
                 'maxFE', 10000, ...
                 'D', data.D, ...
                 'proM', 0.4, ...
-                'algoIndices', algoVector);
+                'algoPercentages', algoVector);
             allSolutions{ii} = finalData;
             allFitness{ii} = FitnessSingle(finalData.Pop);
         end
-        data.selectionMethods = [data.algo1, data.algo2, data.algo3, data.algo4];
-        data = rmfield(data, {'algo1', 'algo2', 'algo3', 'algo4'});
+        data.selectionMethods = algoVector;
+        data = rmfield(data, {'tournamentPer', 'stocPer', 'rankPer', 'truncPer'});
         data.finalPop = allSolutions;
         data.finalFitness = allFitness;
         data.funcInfo = funcInfo;
@@ -73,7 +73,7 @@ function data = GetFromServer(ip, port, maxDelay)
 		pause(delay);
     end
     
-    fprintf('The for loop ended. This shouldnt happen?\nI ran %d experiments.\n', ii);
+    fprintf('The for loop ended. This shouldnt happen?\nI ran %d experiments.\n', i);
     % !taskkill /F /im "matlab.exe"
     return
     
