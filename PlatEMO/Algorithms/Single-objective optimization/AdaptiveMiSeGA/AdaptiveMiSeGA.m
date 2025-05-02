@@ -1,4 +1,12 @@
 classdef AdaptiveMiSeGA < ALGORITHM
+% <1992> <single> <real/integer/label/binary/permutation> <large/none> <constrained/none>
+% Adaptive Multiple Selection genetic algorithm
+% proC ---  1 --- Probability of crossover
+% disC --- 20 --- Distribution index of simulated binary crossover
+% proM ---  1 --- Expectation of the number of mutated variables
+% disM --- 20 --- Distribution index of polynomial mutation
+
+
     methods
         function main(Algorithm, Problem)
             %% Parameter setting
@@ -21,30 +29,30 @@ classdef AdaptiveMiSeGA < ALGORITHM
                 Generation = Generation + 1;
                 prevPopulation = Population;
                 fitness = FitnessSingle(Population);
+                
                 N = Problem.N;
-                quarterSizes = round(algoPercentages * N);
-                while sum(quarterSizes) > N
-                    [~, idx] = max(quarterSizes);
-                    quarterSizes(idx) = quarterSizes(idx) - 1;
-                end
-                while sum(quarterSizes) < N
-                    [~, idx] = min(quarterSizes);
-                    quarterSizes(idx) = quarterSizes(idx) + 1;
-                end
-                startIdx = cumsum([1, quarterSizes(1:end-1)]);
+                % >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                % INSERT START: RANDOM RESHUFFLING + ADAPTIVE SUBPOP ASSIGNMENT
+                % 1. Shuffle all individuals randomly
+                shuffledIndices = randperm(N);
+                
+                % 2. Calculate subpopulation sizes from current algoPercentages
+                subpopSizes = round(algoPercentages * N);
+                subpopSizes(end) = N - sum(subpopSizes(1:end-1)); % Ensure sum = N
+                
+                % 3. Assign individuals to subpopulations
                 subPopulations = cell(1, 4);
                 subIndices = cell(1, 4);
+                startIdx = 1;
                 for i = 1:4
-                    algo = algoIndices(i);
-                    quarterIndices = startIdx(i):(startIdx(i) + quarterSizes(i) - 1);
-                    if isempty(subPopulations{algo})
-                        subPopulations{algo} = Population(quarterIndices);
-                        subIndices{algo} = quarterIndices;
-                    else
-                        subPopulations{algo} = [subPopulations{algo}, Population(quarterIndices)];
-                        subIndices{algo} = [subIndices{algo}, quarterIndices];
-                    end
+                    endIdx = startIdx + subpopSizes(i) - 1;
+                    subIndices{i} = shuffledIndices(startIdx:endIdx);
+                    subPopulations{i} = Population(subIndices{i});
+                    startIdx = endIdx + 1;
                 end
+                % INSERT END
+                % <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
                 MatingPool = zeros(1, N);
                 parentSelectionInfo = zeros(N, 2);
                 currIdx = 1;
@@ -64,11 +72,23 @@ classdef AdaptiveMiSeGA < ALGORITHM
                         currIdx = currIdx + numToSelect;
                     end
                 end
+                shuffledParentIndices = randperm(N);
+                
+                % Create pairs by taking consecutive indices from the shuffled array
                 for i = 1:floor(N/2)
-                    parent1Idx = MatingPool(i);
-                    parent2Idx = MatingPool(i + floor(N/2));
-                    parentSelectionInfo(i, 2) = parentSelectionInfo(i + floor(N/2), 1);
-                    parentSelectionInfo(i + floor(N/2), 2) = parentSelectionInfo(i, 1);
+                    parent1Idx = shuffledParentIndices(i*2-1);
+                    parent2Idx = shuffledParentIndices(i*2);
+                    
+                    % Record which algorithm the other parent came from
+                    parentSelectionInfo(parent1Idx, 2) = parentSelectionInfo(parent2Idx, 1);
+                    parentSelectionInfo(parent2Idx, 2) = parentSelectionInfo(parent1Idx, 1);
+                end
+                
+                % Handle the case when N is odd
+                if mod(N, 2) == 1
+                    lastIdx = N;
+                    randomIdx = randi(N-1);
+                    parentSelectionInfo(lastIdx, 2) = parentSelectionInfo(randomIdx, 1);
                 end
                 Offspring = OperatorGA(Problem, Population(MatingPool), {proC, disC, proM, disM});
                 for i = 1:length(Offspring)
@@ -100,11 +120,10 @@ classdef AdaptiveMiSeGA < ALGORITHM
                     newContributions(parentMethods(1)) = newContributions(parentMethods(1)) + contribution/2;
                     newContributions(parentMethods(2)) = newContributions(parentMethods(2)) + contribution/2;
                 end
-                decayFactor = 0.7;
-                algoContributions = decayFactor * algoContributions + newContributions;
+                algoContributions = newContributions;
                 if sum(algoContributions) > 0
                     newPercentages = algoContributions / sum(algoContributions);
-                    minPercentage = 0.05;
+                    minPercentage = 0.01;
                     for i = 1:length(newPercentages)
                         if newPercentages(i) < minPercentage
                             deficit = minPercentage - newPercentages(i);
@@ -122,7 +141,7 @@ classdef AdaptiveMiSeGA < ALGORITHM
                     algoPercentages = newPercentages / sum(newPercentages);
                 end
                 
-                if mod(Generation, 10) == 0
+                if mod(Generation, 1) == 0
                     fprintf('Generation %d - Selection Method Percentages:\n', Generation);
                     for i = 1:length(algoNames)
                         fprintf('  %s: %.2f%%\n', algoNames{i}, algoPercentages(i)*100);
