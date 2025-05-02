@@ -15,8 +15,8 @@ classdef AdaptiveMiSeGA < ALGORITHM
             % {@TournamentSelection, @StochasticUniversalSampling, @RankSelection, @TruncationSelection}
             selectionMap = containers.Map(...
                 {1, 2, 3, 4}, ...
-                {@TournamentSelection, @StochasticUniversalSampling, @RankSelection, @TruncationSelection});
-            algoNames = {'Tournament', 'SUS', 'Rank', 'Truncation'};
+                {@StochasticUniversalSampling, @RankSelection, @TruncationSelection, @TournamentSelection});
+            algoNames = {'SUS', 'Rank', 'Truncation', 'Tournament'};
             algoPercentages = initialAlgoPercentages;
             algoContributions = zeros(1, 4);
             %% Generate random population
@@ -61,7 +61,7 @@ classdef AdaptiveMiSeGA < ALGORITHM
                         subFitness = fitness(subIndices{algo});
                         numToSelect = length(subIndices{algo});
                         selFunc = selectionMap(algo);
-                        if(algo == 1)
+                        if(algo == 4)
                             selectedIndices = selFunc(2, numToSelect, subFitness);
                         else
                             selectedIndices = selFunc(numToSelect, subFitness);
@@ -72,6 +72,9 @@ classdef AdaptiveMiSeGA < ALGORITHM
                         currIdx = currIdx + numToSelect;
                     end
                 end
+                
+                % FIXED SECTION: Completely random parent pairing across all algorithms
+                % Randomly shuffle the parent indices to create random pairs
                 shuffledParentIndices = randperm(N);
                 
                 % Create pairs by taking consecutive indices from the shuffled array
@@ -90,10 +93,39 @@ classdef AdaptiveMiSeGA < ALGORITHM
                     randomIdx = randi(N-1);
                     parentSelectionInfo(lastIdx, 2) = parentSelectionInfo(randomIdx, 1);
                 end
+                
+                % Create a mating pairs array to keep track of which individuals are mated
+                matingPairs = zeros(N, 2);
+                pairCount = 1;
+                for i = 1:2:N-1
+                    if i+1 <= N  % Ensure we have a pair
+                        matingPairs(pairCount, :) = [shuffledParentIndices(i), shuffledParentIndices(i+1)];
+                        pairCount = pairCount + 1;
+                    end
+                end
+                
+                % Generate offspring using the mating pool
                 Offspring = OperatorGA(Problem, Population(MatingPool), {proC, disC, proM, disM});
+                
+                % Store parent information for each offspring
+                % Each pair of parents produces two offspring
                 for i = 1:length(Offspring)
-                    pairIndex = mod(i-1, floor(N/2)) + 1;
-                    parentSelectionTracker.(['offspring_', num2str(i)]) = parentSelectionInfo(pairIndex, :);
+                    pairIndex = ceil(i/2);  % Each pair produces 2 offspring
+                    if pairIndex <= size(matingPairs, 1)
+                        parent1Idx = matingPairs(pairIndex, 1);
+                        parent2Idx = matingPairs(pairIndex, 2);
+                        % Store the algorithms that selected these parents
+                        parentSelectionTracker.(['offspring_', num2str(i)]) = [
+                            parentSelectionInfo(parent1Idx, 1), 
+                            parentSelectionInfo(parent2Idx, 1)
+                        ];
+                    else
+                        % Handle odd number case or any boundary cases
+                        parentSelectionTracker.(['offspring_', num2str(i)]) = [
+                            parentSelectionInfo(1, 1),  % Default to first parent's algorithm 
+                            parentSelectionInfo(2, 1)   % Default to second parent's algorithm
+                        ];
+                    end
                 end
                 combinedPopulation = [Population, Offspring];
                 combinedFitness = FitnessSingle(combinedPopulation);
@@ -120,17 +152,41 @@ classdef AdaptiveMiSeGA < ALGORITHM
                     newContributions(parentMethods(1)) = newContributions(parentMethods(1)) + contribution/2;
                     newContributions(parentMethods(2)) = newContributions(parentMethods(2)) + contribution/2;
                 end
-                algoContributions = newContributions;
+                % Debugging output to track contributions
+                if mod(Generation, 10) == 0
+                    fprintf('Generation %d - Raw Contributions:\n', Generation);
+                    for i = 1:length(algoNames)
+                        fprintf('  %s: %.4f\n', algoNames{i}, newContributions(i));
+                    end
+                end
+                
+                % Apply smoothing to prevent sudden dramatic changes in algorithm percentages
+                % Either exponential moving average or weighted sum with previous contributions
+                if Generation == 1
+                    algoContributions = newContributions;
+                else
+                    % Apply smoothing with alpha=0.3 (70% previous, 30% new)
+                    alpha = 0.3;
+                    algoContributions = (1-alpha) * algoContributions + alpha * newContributions;
+                end
+                
                 if sum(algoContributions) > 0
                     newPercentages = algoContributions / sum(algoContributions);
-                    minPercentage = 0.01;
+                    
+                    % Ensure minimum representation for each algorithm
+                    minPercentage = 0.1; % Increased from 0.01 to ensure meaningful participation
+                    
+                    % Ensure no algorithm gets below minPercentage
                     for i = 1:length(newPercentages)
                         if newPercentages(i) < minPercentage
                             deficit = minPercentage - newPercentages(i);
                             newPercentages(i) = minPercentage;
-                            othersSum = sum(newPercentages) - minPercentage;
+                            
+                            % Calculate total of other percentages to distribute deficit proportionally
+                            otherIndices = setdiff(1:length(newPercentages), i);
+                            othersSum = sum(newPercentages(otherIndices));
+                            
                             if othersSum > 0
-                                otherIndices = setdiff(1:length(newPercentages), i);
                                 for j = otherIndices
                                     newPercentages(j) = newPercentages(j) - deficit * (newPercentages(j) / othersSum);
                                 end
@@ -138,10 +194,16 @@ classdef AdaptiveMiSeGA < ALGORITHM
                         end
                     end
                     
+                    % Normalize to ensure sum is exactly 1.0
                     algoPercentages = newPercentages / sum(newPercentages);
+                    
+                    % Debugging to verify normalization
+                    if abs(sum(algoPercentages) - 1.0) > 1e-10
+                        fprintf('Warning: Algorithm percentages sum to %f instead of 1.0\n', sum(algoPercentages));
+                    end
                 end
                 
-                if mod(Generation, 1) == 0
+                if mod(Generation, 10) == 0
                     fprintf('Generation %d - Selection Method Percentages:\n', Generation);
                     for i = 1:length(algoNames)
                         fprintf('  %s: %.2f%%\n', algoNames{i}, algoPercentages(i)*100);
