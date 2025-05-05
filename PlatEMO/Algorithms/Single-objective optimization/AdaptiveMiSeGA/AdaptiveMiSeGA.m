@@ -23,6 +23,7 @@ classdef AdaptiveMiSeGA < ALGORITHM
             Population = Problem.Initialization();
             Generation = 0;
             global finalData
+            finalData.AlgoPercentages = cell(1,1);
             parentSelectionTracker = struct();
             %% Optimization
             while Algorithm.NotTerminated(Population)
@@ -211,7 +212,7 @@ classdef AdaptiveMiSeGA < ALGORITHM
                 end
                 
                 finalData.Pop = Population;
-                finalData.AlgoPercentages = algoPercentages;
+                finalData.AlgoPercentages{Generation} = algoPercentages;
                 finalData.AlgoContributions = algoContributions;
             end
         end

@@ -35,10 +35,9 @@ function data = GetFromServer(ip, port, maxDelay)
 		display(data);
 		delay = round(minDelay + (maxDelay - minDelay) * rand());
         fprintf("Finished Experiment. Delaying for %d seconds before asking for another.\n", delay);
-        allSolutions = cell(1, data.repeat);  % Preallocate a cell array
+        % allSolutions = cell(1, data.repeat);  % Preallocate a cell array
         allFitness = cell(1, data.repeat);  % Preallocate a cell array
         algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
-        algoVector = algoVector ./ norm(algoVector);
 		
         for ii = 1:data.repeat
             temp = platemo('algorithm', @MiSeGA, ...
@@ -48,12 +47,11 @@ function data = GetFromServer(ip, port, maxDelay)
                 'D', data.D, ...
                 'proM', 0.4, ...
                 'algoPercentages', algoVector);
-            allSolutions{ii} = finalData;
             allFitness{ii} = FitnessSingle(finalData.Pop);
         end
         data.selectionMethods = algoVector;
         data = rmfield(data, {'tournamentPer', 'stocPer', 'rankPer', 'truncPer'});
-        data.finalPop = allSolutions;
+        % data.finalPop = allSolutions;
         data.finalFitness = allFitness;
         data.funcInfo = funcInfo;
 
