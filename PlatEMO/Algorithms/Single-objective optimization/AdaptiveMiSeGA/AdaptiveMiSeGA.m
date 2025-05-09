@@ -153,13 +153,6 @@ classdef AdaptiveMiSeGA < ALGORITHM
                     newContributions(parentMethods(1)) = newContributions(parentMethods(1)) + contribution/2;
                     newContributions(parentMethods(2)) = newContributions(parentMethods(2)) + contribution/2;
                 end
-                % Debugging output to track contributions
-                if mod(Generation, 10) == 0
-                    fprintf('Generation %d - Raw Contributions:\n', Generation);
-                    for i = 1:length(algoNames)
-                        fprintf('  %s: %.4f\n', algoNames{i}, newContributions(i));
-                    end
-                end
                 
                 % Apply smoothing to prevent sudden dramatic changes in algorithm percentages
                 % Either exponential moving average or weighted sum with previous contributions
@@ -200,14 +193,14 @@ classdef AdaptiveMiSeGA < ALGORITHM
                     
                     % Debugging to verify normalization
                     if abs(sum(algoPercentages) - 1.0) > 1e-10
-                        fprintf('Warning: Algorithm percentages sum to %f instead of 1.0\n', sum(algoPercentages));
+                        % fprintf('Warning: Algorithm percentages sum to %f instead of 1.0\n', sum(algoPercentages));
                     end
                 end
                 
                 if mod(Generation, 10) == 0
-                    fprintf('Generation %d - Selection Method Percentages:\n', Generation);
+                    % fprintf('Generation %d - Selection Method Percentages:\n', Generation);
                     for i = 1:length(algoNames)
-                        fprintf('  %s: %.2f%%\n', algoNames{i}, algoPercentages(i)*100);
+                        % fprintf('  %s: %.2f%%\n', algoNames{i}, algoPercentages(i)*100);
                     end
                 end
                 
