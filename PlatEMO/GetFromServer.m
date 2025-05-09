@@ -21,10 +21,19 @@ function data = GetFromServer(ip, port, maxDelay)
     fprintf('Delaying for %d seconds\n', delay);
     pause(delay);
     
-	for i = 1:1000
+    for i = 1:1000
         finalData = {};
-		data = webread(url, options);
-		if isfield(data, 'message')
+        while true
+            try
+                data = webread(url, options);
+                break; % Exit the loop if webread succeeds
+            catch ME
+                waitTime = 5 + (20 - 5) * rand();  % Random time between 5 and 20 seconds
+                fprintf('webread failed: %s\nRetrying in %.2f seconds...\n', ME.message, waitTime);
+                pause(waitTime);
+            end
+        end
+        if isfield(data, 'message')
 			fprintf('Stopping with message : %s\nI ran %d experiments.\n', data.message, i);
             % !start selfDestruct.bat
             
@@ -36,21 +45,41 @@ function data = GetFromServer(ip, port, maxDelay)
 		delay = round(minDelay + (maxDelay - minDelay) * rand());
         fprintf("Finished Experiment. Delaying for %d seconds before asking for another.\n", delay);
         % allSolutions = cell(1, data.repeat);  % Preallocate a cell array
+        allSolutions = cell(1, data.repeat);  
         allFitness = cell(1, data.repeat);  % Preallocate a cell array
-        algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
+        if(double(data.adaptive) == 0)
+            algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
+        end
 		
         for ii = 1:data.repeat
-            temp = platemo('algorithm', @MiSeGA, ...
-                'problem', funcHandle, ...
-                'N', 100, ...
-                'maxFE', 10000, ...
-                'D', data.D, ...
-                'proM', 0.4, ...
-                'algoPercentages', algoVector);
+            if(double(data.adaptive) == 1)
+                temp = platemo('algorithm', @AdaptiveMiSeGA, ...
+                    'problem', funcHandle, ...
+                    'N', double(data.pop), ...
+                    'maxFE', double(data.maxFE), ...
+                    'D', double(data.D), ...
+                    'proM', 0.4);
+                allSolutions{ii} = finalData.AlgoPercentages;
+                allFitness{ii} = FitnessSingle(finalData.Pop);
+            else
+                temp = platemo('algorithm', @MiSeGA, ...
+                    'problem', funcHandle, ...
+                    'N', double(data.pop), ...
+                    'maxFE', double(data.maxFE), ...
+                    'D', double(data.D), ...
+                    'proM', 0.4, ...
+                    'algoPercentages', algoVector);
+                allFitness{ii} = FitnessSingle(finalData.Pop);
+            end
             allFitness{ii} = FitnessSingle(finalData.Pop);
         end
-        data.selectionMethods = algoVector;
-        data = rmfield(data, {'tournamentPer', 'stocPer', 'rankPer', 'truncPer'});
+
+        if(double(data.adaptive) == 1)
+            data.selectionCurve = allSolutions;
+        else
+            data.selectionMethods = algoVector;
+            data = rmfield(data, {'tournamentPer', 'stocPer', 'rankPer', 'truncPer'});
+        end
         % data.finalPop = allSolutions;
         data.finalFitness = allFitness;
         data.funcInfo = funcInfo;
@@ -124,12 +153,17 @@ function uploadFileToServerAsJSON(fileName, serverUrl, computerName, dataId)
     );
 
     % Send the POST request
-    try
-        response = webwrite(serverUrl, jsonString, options);
-        % Display the server response
-        disp('Server Response:');
-        disp(response);
-    catch ME
-        error('Error during POST request: %s', ME.message);
+    while true
+        try
+            response = webwrite(serverUrl, jsonString, options);
+            % Display the server response
+            disp('Server Response:');
+            disp(response);
+            break; % Exit the loop if webread succeeds
+        catch ME
+            waitTime = 5 + (20 - 5) * rand();  % Random time between 5 and 20 seconds
+            fprintf('Post failed: %s\nRetrying in %.2f seconds...\n', ME.message, waitTime);
+            pause(waitTime);
+        end
     end
 end
