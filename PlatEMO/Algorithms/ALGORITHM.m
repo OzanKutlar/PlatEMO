@@ -159,7 +159,16 @@ end
 function DefaultOutput(Algorithm,Problem)
 % The default output function of ALGORITHM
 
-    clc; fprintf('%s on %d-objective %d-variable %s (%6.2f%%), %.2fs passed...\n',class(Algorithm),Problem.M,Problem.D,class(Problem),Problem.FE/Problem.maxFE*100,Algorithm.metric.runtime);
+    clc;
+    persistent lastPrintedSecond
+    currentSecond = floor(Algorithm.metric.runtime);
+    
+    if isempty(lastPrintedSecond) || currentSecond > (lastPrintedSecond + 4)
+        fprintf('%s on %d-objective %d-variable %s (%6.2f%%), %.2fs passed...\n', ...
+            class(Algorithm), Problem.M, Problem.D, class(Problem), ...
+            Problem.FE / Problem.maxFE * 100, Algorithm.metric.runtime);
+        lastPrintedSecond = currentSecond;
+    end
     if Problem.FE >= Problem.maxFE
         if ~iscell(Algorithm.metName)
             Algorithm.metName = {Algorithm.metName};

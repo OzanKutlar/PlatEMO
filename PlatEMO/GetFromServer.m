@@ -1,4 +1,6 @@
 function data = GetFromServer(ip, port, maxDelay)
+    disp("Ip is : " + ip)
+
     url = sprintf('http://%s:%s', ip, port);
     global finalData
 

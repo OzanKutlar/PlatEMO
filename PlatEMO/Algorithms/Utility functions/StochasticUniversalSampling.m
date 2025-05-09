@@ -1,6 +1,5 @@
 function index = StochasticUniversalSampling(N, Fitness)
 
-            disp("Test");
             %StochasticUniversalSampling - Stochastic Universal Sampling selection.
             %
             %   index = StochasticUniversalSampling(N, Fitness) returns the indices of
