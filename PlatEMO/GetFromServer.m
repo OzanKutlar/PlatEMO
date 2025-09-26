@@ -50,36 +50,36 @@ function data = GetFromServer(ip, port, maxDelay)
         paramCell = {}; % Initialize cell array for platemo parameters
         
         if isMiSeDE
-            % --- Setup for MiSeDE ---
-            algorithmHandle = @MiSeDE;
-            algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
-            % MiSeDE requires CR, F, and algoPercentages
-            paramCell = {'CR', double(data.CR), 'F', double(data.F), 'algoPercentages', algoVector};
+            if isAdaptive
+                algorithmHandle = @AdaptiveMiSeDE;
+                algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
+                paramCell = {'CR', 0.9, 'F', 0.5};
+            else
+                algorithmHandle = @MiSeDE;
+                algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
+                paramCell = {'CR', 0.9, 'F', 0.5, 'algoPercentages', algoVector};
+            end
         else 
-            % --- Setup for MiSeGA (default) ---
             if isAdaptive
                 algorithmHandle = @AdaptiveMiSeGA;
-                % AdaptiveMiSeGA requires proM
                 paramCell = {'proM', 0.4};
             else
                 algorithmHandle = @MiSeGA;
                 algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
-                % MiSeGA requires proM and algoPercentages
                 paramCell = {'proM', 0.4, 'algoPercentages', algoVector};
             end
         end
 
+
         for ii = 1:data.repeat
-            % Universal platemo call using the prepared handles and parameters
             temp = platemo('algorithm', algorithmHandle, ...
                 'problem', funcHandle, ...
                 'N', double(data.pop), ...
                 'maxFE', double(data.maxFE), ...
                 'D', double(data.D), ...
-                paramCell{:}); % Expand the cell array of parameters
+                paramCell{:});
             
-            % Store results based on which algorithm was run
-            if ~isMiSeDE && isAdaptive
+            if isAdaptive
                 allSolutions{ii} = finalData.AlgoPercentages;
             end
             allFitness{ii} = FitnessSingle(finalData.Pop);
