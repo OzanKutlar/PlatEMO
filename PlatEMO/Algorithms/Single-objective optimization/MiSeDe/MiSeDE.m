@@ -31,7 +31,7 @@ classdef MiSeDE < ALGORITHM
             
             %% Generate random population
             Population = Problem.Initialization();
-
+            global finalData
             %% Optimization
             while Algorithm.NotTerminated(Population)
                 fitness = FitnessSingle(Population);
@@ -96,6 +96,7 @@ classdef MiSeDE < ALGORITHM
                 % DE's one-to-one replacement strategy
                 replace = FitnessSingle(Population) > FitnessSingle(Offspring);
                 Population(replace) = Offspring(replace);
+                finalData.Pop = Population;
             end
         end
     end

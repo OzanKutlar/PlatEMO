@@ -88,7 +88,7 @@ function data = GetFromServer(ip, port, maxDelay)
         if isMiSeDE
             data.selectionMethods = algoVector;
             % Remove fields specific to the DE experiment setup
-            data = rmfield(data, {'tournamentPer', 'stocPer', 'rankPer', 'truncPer', 'CR', 'F'});
+            data = rmfield(data, {'tournamentPer', 'stocPer', 'rankPer', 'truncPer'});
         else % This is MiSeGA
             if isAdaptive
                 data.selectionCurve = allSolutions;
