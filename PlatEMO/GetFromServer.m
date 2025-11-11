@@ -31,11 +31,13 @@ function data = GetFromServer(ip, port, maxDelay)
                 pause(waitTime);
             end
         end
+        tic
         if isfield(data, 'message')
 			fprintf('Stopping with message : %s\nI ran %d experiments.\n', data.message, i);
             %!start selfDestruct.bat
 			return
         end
+        data.startTime = char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss'));
         funcHandle = eval(strcat("@CEC", data.year, "_F", num2str(data.func)));
         funcInfo = eval(strcat("CEC", data.year, "_F", num2str(data.func)));
 		display(data);
@@ -54,7 +56,6 @@ function data = GetFromServer(ip, port, maxDelay)
         if isMiSeDE
             if isAdaptive
                 algorithmHandle = @AdaptiveMiSeDE;
-                algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
                 paramCell = {'CR', 0.9, 'F', 0.5};
             else
                 algorithmHandle = @MiSeDE;
@@ -88,9 +89,12 @@ function data = GetFromServer(ip, port, maxDelay)
         end
 
         if isMiSeDE
+            if isAdaptive
+                data.selectionCurve = allSolutions;
+            else
             data.selectionMethods = algoVector;
-            % Remove fields specific to the DE experiment setup
             data = rmfield(data, {'tournamentPer', 'stocPer', 'rankPer', 'truncPer'});
+            end
         else % This is MiSeGA
             if isAdaptive
                 data.selectionCurve = allSolutions;
@@ -100,8 +104,13 @@ function data = GetFromServer(ip, port, maxDelay)
             end
         end
 
+        runTimeMeasure = toc;
+
         data.finalFitness = allFitness;
         data.funcInfo = funcInfo;
+        data.runTime = toc;
+        data.compName = computerName;
+        data.finishTime = char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss'));
 
         nameOfFile = strcat("exp-testing", string(data.id));
 		nameOfFile = strcat('experiments/', nameOfFile, '.mat');
