@@ -10,14 +10,10 @@ function data = GetFromServer(ip, port, maxDelay)
 
     addpath(genpath(pwd));
     
-
     computerName = getenv('COMPUTERNAME');
-    % numbers = regexp(computerName, '\d+', 'match');
 	options = weboptions('HeaderFields', {'ComputerName', computerName}); % Add the computerName as a header
 
     minDelay = 1;
-
-    
     
     delay = round(minDelay + (maxDelay - minDelay) * rand());
     fprintf('Delaying for %d seconds\n', delay);
@@ -37,8 +33,7 @@ function data = GetFromServer(ip, port, maxDelay)
         end
         if isfield(data, 'message')
 			fprintf('Stopping with message : %s\nI ran %d experiments.\n', data.message, i);
-            % !start selfDestruct.bat
-            
+            %!start selfDestruct.bat
 			return
         end
         funcHandle = eval(strcat("@CEC", data.year, "_F", num2str(data.func)));
@@ -46,49 +41,70 @@ function data = GetFromServer(ip, port, maxDelay)
 		display(data);
 		delay = round(minDelay + (maxDelay - minDelay) * rand());
         fprintf("Finished Experiment. Delaying for %d seconds before asking for another.\n", delay);
-        % allSolutions = cell(1, data.repeat);  % Preallocate a cell array
+        
         allSolutions = cell(1, data.repeat);  
-        allFitness = cell(1, data.repeat);  % Preallocate a cell array
-        if(double(data.adaptive) == 0)
-            algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
-        end
-		
-        for ii = 1:data.repeat
-            if(double(data.adaptive) == 1)
-                temp = platemo('algorithm', @AdaptiveMiSeGA, ...
-                    'problem', funcHandle, ...
-                    'N', double(data.pop), ...
-                    'maxFE', double(data.maxFE), ...
-                    'D', double(data.D), ...
-                    'proM', 0.4);
-                allSolutions{ii} = finalData.AlgoPercentages;
-                allFitness{ii} = FitnessSingle(finalData.Pop);
+        allFitness = cell(1, data.repeat);
+        
+        % Check for adaptive and algorithm type from server data
+        isAdaptive = isfield(data, 'adaptive') && double(data.adaptive) == 1;
+        isMiSeDE = isfield(data, 'algorithmName') && strcmpi(data.algorithmName, 'MiSeDE');
+        
+        paramCell = {}; % Initialize cell array for platemo parameters
+        
+        if isMiSeDE
+            if isAdaptive
+                algorithmHandle = @AdaptiveMiSeDE;
+                algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
+                paramCell = {'CR', 0.9, 'F', 0.5};
             else
-                temp = platemo('algorithm', @MiSeGA, ...
-                    'problem', funcHandle, ...
-                    'N', double(data.pop), ...
-                    'maxFE', double(data.maxFE), ...
-                    'D', double(data.D), ...
-                    'proM', 0.4, ...
-                    'algoPercentages', algoVector);
-                allFitness{ii} = FitnessSingle(finalData.Pop);
+                algorithmHandle = @MiSeDE;
+                algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
+                paramCell = {'CR', 0.9, 'F', 0.5, 'algoPercentages', algoVector};
+            end
+        else 
+            if isAdaptive
+                algorithmHandle = @AdaptiveMiSeGA;
+                paramCell = {'proM', 0.4};
+            else
+                algorithmHandle = @MiSeGA;
+                algoVector = [data.tournamentPer, data.stocPer, data.rankPer, data.truncPer];
+                paramCell = {'proM', 0.4, 'algoPercentages', algoVector};
+            end
+        end
+
+
+        for ii = 1:data.repeat
+            temp = platemo('algorithm', algorithmHandle, ...
+                'problem', funcHandle, ...
+                'N', double(data.pop), ...
+                'maxFE', double(data.maxFE), ...
+                'D', double(data.D), ...
+                paramCell{:});
+            
+            if isAdaptive
+                allSolutions{ii} = finalData.AlgoPercentages;
             end
             allFitness{ii} = FitnessSingle(finalData.Pop);
         end
 
-        if(double(data.adaptive) == 1)
-            data.selectionCurve = allSolutions;
-        else
+        if isMiSeDE
             data.selectionMethods = algoVector;
+            % Remove fields specific to the DE experiment setup
             data = rmfield(data, {'tournamentPer', 'stocPer', 'rankPer', 'truncPer'});
+        else % This is MiSeGA
+            if isAdaptive
+                data.selectionCurve = allSolutions;
+            else
+                data.selectionMethods = algoVector;
+                data = rmfield(data, {'tournamentPer', 'stocPer', 'rankPer', 'truncPer'});
+            end
         end
-        % data.finalPop = allSolutions;
+
         data.finalFitness = allFitness;
         data.funcInfo = funcInfo;
 
         nameOfFile = strcat("exp-testing", string(data.id));
 		nameOfFile = strcat('experiments/', nameOfFile, '.mat');
-
 
         save(nameOfFile, "data");
 
@@ -103,17 +119,11 @@ function data = GetFromServer(ip, port, maxDelay)
     end
     
     fprintf('The for loop ended. This shouldnt happen?\nI ran %d experiments.\n', i);
-    % !taskkill /F /im "matlab.exe"
     return
     
 end
 
-function fileName = runExperiment(data)
-    disp("Test");
-    pause(1);
-    fileName = "check.sh";
-end
-
+% The helper functions runExperiment and uploadFileToServerAsJSON remain unchanged.
 function uploadFileToServerAsJSON(fileName, serverUrl, computerName, dataId)
     % Check if the file exists
     filePath = fullfile(pwd, fileName);
